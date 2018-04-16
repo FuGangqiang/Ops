@@ -1,0 +1,47 @@
+{% import "macro.j2" as tools with context %}
+# [member]
+ETCD_NAME={{ tools.node_name(ansible_host) }}
+ETCD_DATA_DIR=/var/lib/etcd
+ETCD_LISTEN_CLIENT_URLS={{ etcd_scheme }}://{{ ansible_host }}:2379,{{ etcd_scheme }}://127.0.0.1:2379
+ETCD_LISTEN_PEER_URLS={{ etcd_scheme }}://{{ ansible_host }}:2380
+
+
+#[cluster]
+ETCD_INITIAL_CLUSTER={{ tools.initial_cluster(2380) }}
+ETCD_ADVERTISE_CLIENT_URLS={{ etcd_scheme }}://{{ ansible_host }}:2379
+ETCD_INITIAL_ADVERTISE_PEER_URLS={{ etcd_scheme }}://{{ ansible_host }}:2380
+ETCD_INITIAL_CLUSTER_STATE=new
+ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster
+{% if etcd_scheme == 'https' %}
+#[tls]
+ETCD_TRUSTED_CA_FILE=/etc/cluster/ssl/ca.pem
+ETCD_PEER_TRUSTED_CA_FILE=/etc/cluster/ssl/ca.pem
+ETCD_CERT_FILE=/etc/cluster/ssl/etcd.pem
+ETCD_KEY_FILE=/etc/cluster/ssl/etcd-key.pem
+ETCD_PEER_CERT_FILE=/etc/cluster/ssl/etcd.pem
+ETCD_PEER_KEY_FILE=/etc/cluster/ssl/etcd-key.pem
+{% endif %}
+
+
+#[server]
+#ETCD_SNAPSHOT_COUNTER="10000"
+#ETCD_HEARTBEAT_INTERVAL="100"
+#ETCD_ELECTION_TIMEOUT="1000"
+#ETCD_MAX_SNAPSHOTS="5"
+#ETCD_MAX_WALS="5"
+#ETCD_CORS=""
+
+
+#[client]
+ETCDCTL_API=2
+ETCDCTL_ENDPOINTS={{ tools.endpoint_urls(2379) }}
+{% if etcd_scheme == 'https' %}
+# v3
+ETCDCTL_CACERT=/etc/cluster/ssl/ca.pem
+ETCDCTL_CERT=/etc/cluster/ssl/etcd.pem
+ETCDCTL_KEY=/etc/cluster/ssl/etcd-key.pem
+# v2
+ETCDCTL_CA_FILE=/etc/cluster/ssl/ca.pem
+ETCDCTL_CERT_FILE=/etc/cluster/ssl/etcd.pem
+ETCDCTL_KEY_FILE=/etc/cluster/ssl/etcd-key.pem
+{% endif %}

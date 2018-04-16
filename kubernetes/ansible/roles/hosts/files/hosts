@@ -1,0 +1,11 @@
+127.0.0.1	localhost
+::1         localhost ip6-localhost ip6-loopback
+
+10.0.0.2  kube-master
+10.0.0.3  kube-node1
+10.0.0.4  kube-node2
+10.0.0.5  kube-node3
+
+10.0.0.2  etcd-node1
+10.0.0.3  etcd-node2
+10.0.0.4  etcd-node3

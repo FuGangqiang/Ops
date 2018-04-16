@@ -1,0 +1,49 @@
+{% import "macro.j2" as tools with context %}
+[Unit]
+Description=Kubernetes API Service
+After=network.target
+After=etcd.service
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/kubernetes/config
+EnvironmentFile=-/etc/kubernetes/apiserver
+WorkingDirectory=/var/lib/kubernetes/apiserver
+ExecStart=/opt/bin/kube-apiserver \
+    --etcd-servers={{ tools.endpoint_urls(2379) }} \
+    --etcd-cafile=/etc/cluster/ssl/ca.pem \
+    --etcd-certfile=/etc/cluster/ssl/etcd.pem \
+    --etcd-keyfile=/etc/cluster/ssl/etcd-key.pem \
+    --kubelet-https=true \
+    --client-ca-file=/etc/cluster/ssl/ca.pem \
+    --tls-cert-file=/etc/cluster/ssl/kubernetes.pem \
+    --tls-private-key-file=/etc/cluster/ssl/kubernetes-key.pem \
+    --service-account-key-file=/etc/cluster/ssl/ca-key.pem \
+    --advertise-address={{ ansible_host }} \
+    --bind-address={{ ansible_host }} \
+    --insecure-bind-address=127.0.0.1 \
+    --service-cluster-ip-range={{ cluster_ip_range }} \
+    --service-node-port-range=1024-32767 \
+    --admission-control=ServiceAccount,NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota,DefaultStorageClass,NodeRestriction \
+    --authorization-mode=RBAC \
+    --runtime-config=rbac.authorization.k8s.io/v1beta1 \
+    --anonymous-auth=false \
+    --enable-bootstrap-token-auth \
+    --token-auth-file=/etc/cluster/ssl/bootstrap_token.csv \
+    --basic-auth-file=/etc/kubernetes/basic_auth_file \
+    --enable-swagger-ui=true \
+    --apiserver-count=3 \
+    --audit-log-maxage=30 \
+    --audit-log-maxbackup=3 \
+    --audit-log-maxsize=100 \
+    --audit-log-path=/var/lib/kubernetes/audit.log \
+    --event-ttl=1h \
+    --logtostderr=true \
+    --allow-privileged=true \
+    --v=2
+LimitNOFILE=infinity
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

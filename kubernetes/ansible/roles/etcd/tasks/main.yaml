@@ -1,0 +1,58 @@
+- name: Copy etcd archive
+  copy: src={{etcd_binary_filename}} dest=/root/apps/{{etcd_binary_filename}}
+
+- name: Extract etcd archive
+  unarchive:
+    src: "/root/apps/{{etcd_binary_filename}}"
+    dest: "/root/apps"
+    owner: root
+    group: root
+    remote_src: yes
+
+- name: Copy etcd binary to /opt/bin
+  copy:
+    src: "/root/apps/{{ etcd_binary_filename | regex_replace('(.*)(.tar.gz)', '\\1') }}/{{ item }}"
+    dest: "/opt/bin/{{ item }}"
+    remote_src: yes
+    mode: 0755
+  with_items:
+    - etcd
+    - etcdctl
+
+- name: Create system etcd group
+  group:
+    name: etcd
+    state: present
+
+- name: Create system etcd user
+  user:
+    name: etcd
+    state: present
+    comment: "Etcd user"
+    shell: /sbin/nologin
+    system: yes
+    groups: etcd,cluster
+
+- name: Ensure etcd dirs exists
+  file:
+    path: "{{item}}"
+    recurse: yes
+    state: directory
+    owner: etcd
+  with_items:
+    - /var/lib/etcd
+    - /etc/etcd
+
+- name: Write etcd config file
+  template: src=etcd.conf.j2 dest=/etc/etcd/etcd.conf
+  notify:
+    - restart etcd
+
+- name: Write etcd systemd unit file
+  copy: src=etcd.service dest=/etc/systemd/system/etcd.service
+  notify:
+    - reload systemd
+    - restart etcd
+
+- name: Start etcd service
+  service: name=etcd state=started enabled=yes

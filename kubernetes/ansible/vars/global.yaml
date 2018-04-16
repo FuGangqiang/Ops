@@ -1,0 +1,8 @@
+etcd_binary_filename: "etcd-v3.2.15-linux-amd64.tar.gz"
+flannel_binary_filename: "flannel-v0.10.0-linux-amd64.tar.gz"
+kube_master_binary_filename: "kubernetes-server-linux-amd64.tar.gz"
+kube_node_binary_filename: "kubernetes-node-linux-amd64.tar.gz"
+etcd_scheme: https
+cluster_ip_range: "172.30.0.0/16"
+cluster_dns: "172.30.0.2"
+kube_master_host: "10.0.0.2"

@@ -1,0 +1,47 @@
+- name: Ensure kube-node dirs exists
+  file:
+    path: "{{item}}"
+    recurse: yes
+    state: directory
+    owner: root
+  with_items:
+    - /root/apps
+
+- name: Copy kube-node archive
+  copy: src={{kube_node_binary_filename}} dest=/root/apps/{{kube_node_binary_filename}}
+
+- name: Extract kube-node archive
+  unarchive:
+    src: "/root/apps/{{kube_node_binary_filename}}"
+    dest: "/root/apps"
+    owner: root
+    group: root
+    remote_src: yes
+
+- name: Copy kube-node binary to /opt/bin
+  copy:
+    src: "/root/apps/kubernetes/node/bin/{{ item }}"
+    dest: "/opt/bin/{{ item }}"
+    remote_src: yes
+    mode: 0755
+  with_items:
+    - kubectl
+    - kubelet
+
+- name: Ensure etcd dirs exists
+  file:
+    path: "{{item}}"
+    recurse: yes
+    state: directory
+    owner: root
+  with_items:
+    - /var/lib/kubelet
+
+- name: Write kubelet systemd unit file
+  template: src=kubelet.service.j2 dest=/etc/systemd/system/kubelet.service
+  notify:
+    - reload systemd
+    - restart kubelet
+
+- name: Start kubelet service
+  service: name=kubelet state=started enabled=yes

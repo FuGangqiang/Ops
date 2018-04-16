@@ -1,0 +1,9 @@
+- hosts: etcd
+  vars_files:
+    - vars/global.yaml
+  roles:
+    - common
+    - hosts
+    - cluster
+    - etcd
+  

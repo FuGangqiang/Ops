@@ -1,0 +1,27 @@
+[Unit]
+Description=Kubernetes Kubelet
+After=docker.service
+Requires=docker.service
+
+[Service]
+WorkingDirectory=/var/lib/kubelet
+ExecStart=/opt/bin/kubelet \
+    --address={{ ansible_host }} \
+    --hostname-override={{ ansible_host }} \
+    --pod-infra-container-image=registry.access.redhat.com/rhel7/pod-infrastructure:latest \
+    --bootstrap-kubeconfig=/etc/cluster/ssl/bootstrap.kubeconfig \
+    --kubeconfig=/etc/cluster/ssl/kubelet.kubeconfig \
+    --cert-dir=/etc/cluster/ssl \
+    --hairpin-mode promiscuous-bridge \
+    --allow-privileged=true \
+    --serialize-image-pulls=false \
+    --cgroup-driver=systemd \
+    --cluster-dns={{ cluster_dns }} \
+    --cluster-domain=cluster.local \
+    --logtostderr=true \
+    --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

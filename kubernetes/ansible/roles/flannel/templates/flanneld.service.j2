@@ -1,0 +1,24 @@
+{% import "macro.j2" as tools with context %}
+[Unit]
+Description=Flanneld overlay address etcd agent
+After=network.target
+After=network-online.target
+Wants=network-online.target
+After=etcd.service
+Before=docker.service
+
+[Service]
+Type=notify
+ExecStart=/opt/bin/flanneld \
+    -etcd-cafile=/etc/cluster/ssl/ca.pem \
+    -etcd-certfile=/etc/cluster/ssl/etcd.pem \
+    -etcd-keyfile=/etc/cluster/ssl/etcd-key.pem \
+    -etcd-endpoints={{ tools.endpoint_urls(2379) }} \
+    -etcd-prefix=/kubernetes/network \
+    -iface={{ iface_name.stdout }}
+ExecStartPost=/opt/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d /run/flannel/docker
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+RequiredBy=docker.service

@@ -1,0 +1,26 @@
+[Unit]
+Description=Docker Application Container Engine
+After=network-online.target docker.socket
+Wants=network-online.target
+Requires=docker.socket
+
+[Service]
+Type=notify
+EnvironmentFile=-/run/flannel/docker
+ExecStart=/usr/bin/dockerd \
+    --log-level=error \
+    --exec-opt native.cgroupdriver=systemd \
+    $DOCKER_NETWORK_OPTIONS
+ExecReload=/bin/kill -s HUP $MAINPID
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Delegate=yes
+KillMode=process
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

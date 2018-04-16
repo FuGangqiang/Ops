@@ -1,0 +1,67 @@
+- name: Ensure kube-master dirs exists
+  file:
+    path: "{{item}}"
+    recurse: yes
+    state: directory
+    owner: root
+  with_items:
+    - /etc/kubernetes
+    - /var/lib/kubernetes/apiserver
+    - /var/lib/kubernetes/controller-manager
+    - /var/lib/kubernetes/scheduler
+    - /root/apps
+    - /root/yamls
+
+- name: Copy kube-master archive
+  copy: src={{kube_master_binary_filename}} dest=/root/apps/{{kube_master_binary_filename}}
+
+- name: Copy kube component yaml file
+  copy: src={{ item }} dest=/root/yamls/{{ item }}
+  with_items:
+    - coredns.yaml
+    - dashboard.yaml
+    - kube-router.yaml
+
+- name: Extract kube-master archive
+  unarchive:
+    src: "/root/apps/{{kube_master_binary_filename}}"
+    dest: "/root/apps"
+    owner: root
+    group: root
+    remote_src: yes
+
+- name: Copy kube-master binary to /opt/bin
+  copy:
+    src: "/root/apps/kubernetes/server/bin/{{ item }}"
+    dest: "/opt/bin/{{ item }}"
+    remote_src: yes
+    mode: 0755
+  with_items:
+    - kube-apiserver
+    - kube-scheduler
+    - kube-controller-manager
+    - kubectl
+
+- name: Copy basic auth file
+  copy:
+    src: basic_auth_file
+    dest: /etc/kubernetes/basic_auth_file
+    owner: root
+    group: root    
+
+- name: Write kube-master systemd unit files
+  template: src={{item}}.service.j2 dest=/etc/systemd/system/{{item}}.service
+  notify:
+    - reload systemd
+    - restart {{item}}
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+
+- name: Start kube-master services
+  service: name={{item}} state=started enabled=yes
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler

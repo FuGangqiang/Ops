@@ -1,0 +1,42 @@
+- name: Ensure flannel dirs exists
+  file:
+    path: "{{item}}"
+    recurse: yes
+    state: directory
+    owner: root
+  with_items:
+    - /root/apps/flannel
+
+- name: Copy flannel archive
+  copy: src={{ flannel_binary_filename }} dest=/root/apps/{{ flannel_binary_filename }}
+
+- name: Extract flannel archive
+  unarchive:
+    src: "/root/apps/{{ flannel_binary_filename }}"
+    dest: "/root/apps/flannel"
+    owner: root
+    group: root
+    remote_src: yes
+
+- name: Copy flannel binary to /opt/bin
+  copy:
+    src: "/root/apps/flannel/{{ item }}"
+    dest: "/opt/bin/{{ item }}"
+    remote_src: yes
+    mode: 0755
+  with_items:
+    - flanneld
+    - mk-docker-opts.sh
+
+- name: Get iface name
+  shell: "ip -o -4 route show to default | awk '{print $NF}'"
+  register: iface_name
+
+- name: Write flanneld systemd unit file
+  template: src=flanneld.service.j2 dest=/etc/systemd/system/flanneld.service
+  notify:
+    - reload systemd
+    - restart flanneld
+
+- name: Start flanneld service
+  service: name=flanneld state=started enabled=yes

@@ -1,0 +1,92 @@
+- debug:
+    msg: "System {{ inventory_hostname }} has gateway {{ ansible_default_ipv4.gateway }}"
+  when: ansible_default_ipv4.gateway is defined
+
+# - name: Display all variables/facts known for a host
+#   debug:
+#     var: hostvars[inventory_hostname]
+
+- name: Install base packages
+  apt:
+     name: "{{item}}"
+     state: present
+  with_items:
+    - bash
+    - bash-completion
+    - apt-transport-https
+    - ca-certificates
+    - software-properties-common
+    - gnupg2
+
+- name: Add ustc repository
+  copy: src=sources.list dest=/etc/apt/sources.list
+  register: ustc_repo
+
+- name: Upgrade packages
+  apt:
+    upgrade: safe
+    update_cache: yes
+  when: ustc_repo.changed
+
+- name: Generating RSA key for root
+  user:
+    name: root
+    generate_ssh_key: yes
+  
+- name: Add Groups
+  group:
+    name: sudo
+    state: present
+
+- name: Config /etc/sudoers
+  lineinfile:
+    path: /etc/sudoers
+    line: '%sudo ALL=(ALL:ALL) NOPASSWD:ALL'
+    regexp: '^%sudo\s+ALL=\(ALL:ALL\)\s+NOPASSWD:ALL$'
+    state: present
+    validate: 'visudo -cf %s'
+
+- name: Add user {{ user_name }}
+  user:
+    name: '{{ user_name }}'
+    # pip install passlib
+    # python -c "from passlib.hash import sha512_crypt; import getpass; print(sha512_crypt.using(rounds=5000).hash(getpass.getpass()))"
+    # default: 123456
+    password: '$6$5CEzKaYLI.MCTTzR$qS9KsDQtWTk6VuthiLFbW8cBYFh6tb/shWNTmbZSXFRngT/dbYTGxhkrJfEUwCUbLZ9PCu2VA8zqRNAkMMYae1'
+    createhome: yes
+    shell: /bin/bash
+    groups: sudo
+    append: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa
+
+- name: Get users homedir
+  shell: "awk -F: '/\\/bin\\/bash/{ print $6 }' /etc/passwd"
+  register: homedirs
+
+- name: Add bash rc file to all users
+  copy: src=bashrc dest={{item}}/.bashrc owner=root group=root mode=0644
+  with_items: "{{homedirs.stdout_lines}}"
+
+- name: Ensure base directory
+  file:
+    path: "{{item}}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+    recurse: yes
+  with_items:
+    - /opt/bin
+    - /root/apps
+
+- name: Remove swapfile from /etc/fstab
+  mount:
+    name: swap
+    fstype: swap
+    state: absent
+
+- name: Disable swap
+  command: swapoff -a
+  when: ansible_swaptotal_mb > 0

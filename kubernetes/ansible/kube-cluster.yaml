@@ -1,0 +1,118 @@
+- hosts: all
+  vars_files:
+    - vars/global.yaml
+  roles:
+    - common
+    - hosts
+    - cluster
+
+- hosts: etcd
+  vars_files:
+    - vars/global.yaml
+  roles:
+    - etcd
+
+- hosts: kube-master
+  vars_files:
+    - vars/global.yaml
+  pre_tasks:
+    - name: Waiting for etcd start
+      shell: |
+        set -a
+        . /etc/etcd/etcd.conf
+        set +a
+        etcdctl member list
+      register: etc_member_result
+      until: etc_member_result.stdout_lines | length  ==  groups['etcd'] | length
+      retries: 5
+      delay: 10
+    - name: Set etcd /kubernetes/network/config
+      shell: |
+        set -a
+        . /etc/etcd/etcd.conf
+        set +a
+        if etcdctl mkdir /kubernetes/network
+        then
+            etcdctl mk /kubernetes/network/config '{"Network":"{{ cluster_ip_range }}","SubnetLen":24,"Backend":{"Type":"vxlan"}}'
+        else
+            echo "already existed"
+        fi
+  roles:
+    - flannel
+    - kube-master
+  post_tasks:
+    - name: Retrieve public key
+      shell: cat /root/.ssh/id_rsa.pub
+      register: master_public_key
+    - name: 
+      shell: |
+        kubectl create clusterrolebinding kubelet-bootstrap \
+            --clusterrole=system:node-bootstrapper \
+            --user=kubelet-bootstrap
+        kubectl create clusterrolebinding admin-bind \
+            --clusterrole=cluster-admin \
+            --user=admin
+    - name: Check bootstrap.kubeconfig is existed
+      stat: path=/etc/cluster/ssl/bootstrap.kubeconfig
+      register: bootstrap_kubeconfig
+    - name: Create bootstrap.kubeconfig
+      shell: |
+        cd /etc/cluster/ssl
+        KUBE_APISERVER=https://{{ ansible_host }}:6443
+        BOOTSTRAP_TOKEN=$(awk -F, '{print $1}' bootstrap_token.csv)
+        kubectl config set-cluster kubernetes \
+            --certificate-authority=ca.pem \
+            --embed-certs=true \
+            --server=${KUBE_APISERVER} \
+            --kubeconfig=bootstrap.kubeconfig
+        kubectl config set-credentials kubelet-bootstrap \
+            --token=${BOOTSTRAP_TOKEN} \
+            --kubeconfig=bootstrap.kubeconfig
+        kubectl config set-context default \
+            --cluster=kubernetes \
+            --user=kubelet-bootstrap \
+            --kubeconfig=bootstrap.kubeconfig
+        kubectl config set-cluster kubernetes \
+            --certificate-authority=ca.pem \
+            --embed-certs=true \
+            --server=${KUBE_APISERVER} \
+            --kubeconfig=./kubelet.kubeconfig
+        kubectl config set-credentials kubernetes-admin \
+            --client-certificate=admin.pem \
+            --client-key=admin-key.pem \
+            --embed-certs=true \
+            --kubeconfig=./kubelet.kubeconfig
+        kubectl config set-context kubernetes-admin@kubernetes \
+            --cluster=kubernetes \
+            --user=kubernetes-admin \
+            --kubeconfig=./kubelet.kubeconfig
+        kubectl config use-context kubernetes-admin@kubernetes \
+            --kubeconfig=./kubelet.kubeconfig
+      when: not bootstrap_kubeconfig.stat.exists
+    - name: Retrieve bootstrap.kubeconfig
+      shell: cat /etc/cluster/ssl/bootstrap.kubeconfig
+      register: bootstrap_kubeconfig_content
+    - name: Retrieve kubelet.kubeconfig
+      shell: cat /etc/cluster/ssl/kubelet.kubeconfig
+      register: kubeconfig_content
+
+- hosts: kube-node
+  vars_files:
+    - vars/global.yaml
+  pre_tasks:
+    - name: add master public key to slaves
+      authorized_key:
+        user: root
+        key: "{{ hostvars[kube_master_host].master_public_key.stdout }}"
+    - name: add bootstrap.kubeconfig file
+      copy:
+        dest: /etc/cluster/ssl/bootstrap.kubeconfig
+        content: "{{ hostvars[kube_master_host].bootstrap_kubeconfig_content.stdout }}"
+    - name: add kubelet.kubeconfig file
+      copy:
+        dest: /etc/cluster/ssl/kubelet.kubeconfig
+        content: "{{ hostvars[kube_master_host].kubeconfig_content.stdout }}"
+  roles:
+    - flannel
+    - docker
+    - kube-node

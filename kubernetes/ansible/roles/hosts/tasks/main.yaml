@@ -1,0 +1,2 @@
+- name: Copy hosts file
+  copy: src=hosts dest=/etc/hosts owner=root group=root mode=0644

@@ -1,0 +1,25 @@
+[Unit]
+Description=Kubernetes Controller Manager
+
+[Service]
+WorkingDirectory=/var/lib/kubernetes/controller-manager
+ExecStart=/opt/bin/kube-controller-manager \
+    --address=127.0.0.1 \
+    --master=http://127.0.0.1:8080 \
+    --leader-elect=true \
+    --allocate-node-cidrs=true \
+    --service-cluster-ip-range={{ cluster_ip_range }} \
+    --cluster-cidr={{ cluster_ip_range }} \
+    --cluster-name=kubernetes \
+    --cluster-signing-cert-file=/etc/cluster/ssl/ca.pem \
+    --cluster-signing-key-file=/etc/cluster/ssl/ca-key.pem \
+    --root-ca-file=/etc/cluster/ssl/ca.pem \
+    --service-account-private-key-file=/etc/cluster/ssl/ca-key.pem \
+    --logtostderr=true \
+    --v=2
+LimitNOFILE=infinity
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,37 @@
+- name: Create system cluster group
+  group:
+    name: cluster
+    state: present
+
+- name: Ensure cluster dirs exists
+  file:
+    path: "{{item}}"
+    recurse: yes
+    state: directory
+    group: cluster
+  with_items:
+    - /etc/cluster/ssl
+
+- name: Copy ssl files
+  copy:
+    src: "{{ item }}"
+    dest: /etc/cluster/ssl/{{ item }}
+    owner: root
+    group: cluster
+  with_items:
+    - ca.csr
+    - ca.pem
+    - ca-key.pem
+    - etcd.csr
+    - etcd.pem
+    - etcd-key.pem
+    - kubernetes.csr
+    - kubernetes.pem
+    - kubernetes-key.pem
+    - admin.csr
+    - admin.pem
+    - admin-key.pem
+    - kube-proxy.csr
+    - kube-proxy.pem
+    - kube-proxy-key.pem
+    - bootstrap_token.csv

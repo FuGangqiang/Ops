@@ -1,0 +1,27 @@
+{% macro node_name(node_host) -%}
+  node{{ node_host.split('.')[-1] }}
+{%- endmacro -%}
+
+{% macro initial_cluster(port) -%}
+{% for host in groups['etcd'] -%}
+    {{ node_name(host) }}={{ etcd_scheme }}://{{ host }}:{{ port }}
+    {%- if not loop.last -%},{%- endif -%}
+{%- endfor -%}
+{% endmacro -%}
+
+{% macro peer_urls(port) -%}
+{% for host in groups['etcd'] -%}
+  {%- if ansible_host == host -%}
+  {%- else -%}
+     {{ etcd_scheme }}://{{ host }}:{{ port }}
+     {%- if not loop.last -%},{%- endif -%}
+  {%- endif -%}
+{%- endfor -%}
+{% endmacro -%}
+
+{% macro endpoint_urls(port) -%}
+{% for host in groups['etcd'] -%}
+    {{ etcd_scheme }}://{{ host }}:{{ port }}
+    {%- if not loop.last -%},{%- endif -%}
+{%- endfor -%}
+{% endmacro -%}

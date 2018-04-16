@@ -1,0 +1,36 @@
+- hosts: all
+  become: yes
+  roles:
+    - common
+
+- hosts: zookeeper
+  become: yes
+  roles:
+    - zookeeper
+
+- hosts: mesos-master
+  become: yes
+  roles:
+    - mesos-master
+
+- hosts: mesos-frameworks
+  become: yes
+  roles:
+    - marathon
+    - chronos
+
+- hosts: mesos-slave
+  become: yes
+  roles:
+    - docker
+    - mesos-slave
+
+- hosts: mesos-dns
+  become: yes
+  roles:
+    - mesos-dns
+
+- hosts: all
+  become: yes
+  roles:
+    - mesos-resolv

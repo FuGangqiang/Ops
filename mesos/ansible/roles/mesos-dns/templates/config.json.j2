@@ -1,0 +1,23 @@
+{% import "macro.j2" as tools with context %}
+{
+  "zk": "zk://{{ tools.zookeeper_clients(2181) }}/mesos",
+  "masters": [{{ tools.mesos_masters(5050) }}],
+  "refreshSeconds": 60,
+  "ttl": 60,
+  "domain": "mesos",
+  "port": 53,
+  "resolvers": ["8.8.8.8"],
+  "timeout": 5, 
+  "httpon": true,
+  "dnson": true,
+  "httpport": 8123,
+  "externalon": true,
+  "listener": "{{ groups['mesos-dns'][0] }}",
+  "SOAMname": "test.mesos",
+  "SOARname": "admin.test.mesos",
+  "SOARefresh": 60,
+  "SOARetry":   600,
+  "SOAExpire":  86400,
+  "SOAMinttl": 60,
+  "IPSources": ["netinfo", "mesos", "host"]
+}

@@ -1,0 +1,43 @@
+- name: Add docker repo apt key
+  apt_key:
+    url: "https://download.docker.com/linux/debian/gpg"
+    state: present
+
+- name: Add docker repo
+  lineinfile: dest=/etc/apt/sources.list state=present line='{{item}}'
+  with_items:
+    - "deb https://mirrors.ustc.edu.cn/docker-ce/linux/debian stretch stable"
+  register: docker_repo
+
+- name: Update packages
+  apt:
+    update_cache: yes
+  when: docker_repo.changed
+
+- name: Ensure docker directory
+  file:
+    path: "{{item}}"
+    state: directory
+    recurse: yes
+  with_items:
+    - /etc/docker
+
+- name: Install docker
+  apt: name=docker-ce state=present
+
+- name: Add docker config
+  copy: src=daemon.json dest=/etc/docker/daemon.json
+  notify: restart docker
+
+- name: Write docker systemd unit file
+  copy: src=docker.service dest=/etc/systemd/system/docker.service
+  register: docker_service
+  notify:
+    - restart docker
+
+- name: Reload systemd
+  systemd: daemon_reload=yes
+  when: docker_service.changed
+
+- name: Start docker service
+  service: name=docker state=started enabled=yes

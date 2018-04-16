@@ -1,0 +1,24 @@
+- name: Install zookeeper
+  apt: name={{ item }} state=present update_cache=yes
+  with_items:
+    - openjdk-8-jre-headless
+    - zookeeperd
+
+- name: Create zookeeper dir
+  file: path={{item}} state=directory owner=zookeeper group=zookeeper
+  with_items:
+    - /var/lib/zookeeper
+    - /var/log/zookeeper
+
+- name: Write zookeeper myid file
+  template: src=myid.j2 dest=/var/lib/zookeeper/myid owner=zookeeper group=zookeeper
+  notify:
+    - restart zookeeper
+
+- name: Write zookeeper zoo.cfg
+  template: src=zoo.cfg.j2 dest=/etc/zookeeper/conf/zoo.cfg owner=zookeeper group=zookeeper
+  notify:
+    - restart zookeeper
+
+- name: Start zookeeper service
+  service: name=zookeeper state=started enabled=yes

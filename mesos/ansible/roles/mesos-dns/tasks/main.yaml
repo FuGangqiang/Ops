@@ -1,0 +1,34 @@
+- name: Ensure base directory
+  file:
+    path: "{{item}}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+    recurse: yes
+  with_items:
+    - /etc/mesos-dns
+
+- name: Copy mesos-dns binary to /opt/bin
+  copy:
+    src: "mesos-dns-v0.6.0-linux-amd64"
+    dest: "/opt/bin/mesos-dns"
+    mode: 0755
+
+- name: Write mesos-dns config unit file
+  template: src=config.json.j2 dest=/etc/mesos-dns/config.json
+  notify:
+    - restart mesos-dns
+
+- name: Write mesos-dns systemd unit file
+  copy: src=mesos-dns.service dest=/etc/systemd/system/mesos-dns.service
+  register: mesos_dns_service
+  notify:
+    - restart mesos-dns
+
+- name: Reload systemd
+  systemd: daemon_reload=yes
+  when: mesos_dns_service.changed
+
+- name: Start mesos-dns services
+  service: name=mesos-dns state=started enabled=yes

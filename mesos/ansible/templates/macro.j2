@@ -1,0 +1,21 @@
+{% macro myid(node_host) -%}
+  {%- for x in node_host.split('.') -%}
+    {{ '{:0>3}'.format(x) }}
+  {%- endfor -%}
+{%- endmacro -%}
+
+
+{% macro zookeeper_clients(port) -%}
+{% for host in groups['zookeeper'] -%}
+    {{ host }}:{{ port }}
+    {%- if not loop.last -%},{%- endif -%}
+{%- endfor -%}
+{% endmacro -%}
+
+
+{% macro mesos_masters(port) -%}
+{% for host in groups['mesos-master'] -%}
+    "{{ host }}:{{ port }}"
+    {%- if not loop.last -%},{%- endif -%}
+{%- endfor -%}
+{% endmacro -%}

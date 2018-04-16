@@ -1,0 +1,54 @@
+- name: Add mesos repo apt key
+  apt_key:
+    id: E56151BF
+    keyserver: keyserver.ubuntu.com
+
+- name: Add mesos repo
+  lineinfile: dest=/etc/apt/sources.list state=present line='{{item}}'
+  with_items:
+    - "deb https://mirrors.ustc.edu.cn/debian jessie-backports main"
+    - "deb http://repos.mesosphere.com/debian jessie main"
+  register: mesos_repo
+
+- name: Update packages
+  apt:
+    update_cache: yes
+  when: mesos_repo.changed
+
+- name: Install mesos packages
+  apt: name={{ item }} state=present
+  with_items:
+    - mesos
+    - libssl1.0.0
+  environment:
+    # do not start at the end of install
+    RUNLEVEL: 1
+
+- name: Ensure mesos-master directory
+  file:
+    path: "{{item}}"
+    state: directory
+    recurse: yes
+  with_items:
+    - /var/lib/mesos/master
+
+- name: Write mesos-master systemd unit file
+  template: src=mesos-master.service.j2 dest=/etc/systemd/system/mesos-master.service
+  register: mesos_master_service
+  notify:
+    - restart mesos-master
+
+- name: Reload systemd
+  systemd: daemon_reload=yes
+  when: mesos_master_service.changed
+
+- name: Start mesos-master services
+  service: name=mesos-master state=started enabled=yes
+
+# overwrite origin enable service
+- name: Reenable mesos-master service
+  command: systemctl reenable mesos-master.service
+
+- name: Disable mesos-slave services
+  service: name=mesos-slave enabled=no
+  when: ansible_host not in groups['mesos-slave']

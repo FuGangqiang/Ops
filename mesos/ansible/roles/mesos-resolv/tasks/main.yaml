@@ -1,0 +1,5 @@
+- name: Config /etc/resolv.conf
+  lineinfile:
+    path: /etc/resolv.conf
+    line: "nameserver {{ groups['mesos-dns'][0] }}"
+    state: present

@@ -1,0 +1,53 @@
+- name: Add user marathon
+  user:
+    name: marathon
+
+- name: Add mesos repo apt key
+  apt_key:
+    id: E56151BF
+    keyserver: keyserver.ubuntu.com
+
+- name: Add mesos repo
+  lineinfile: dest=/etc/apt/sources.list state=present line='{{item}}'
+  with_items:
+    - "deb https://mirrors.ustc.edu.cn/debian jessie-backports main"
+    - "deb http://repos.mesosphere.io/debian jessie main"
+  register: mesos_repo
+
+- name: Update packages
+  apt:
+    update_cache: yes
+  when: mesos_repo.changed
+
+- name: Install marathon packages
+  apt: name={{ item }} state=present
+  with_items:
+    - marathon
+  environment:
+    # do not start at the end of install
+    RUNLEVEL: 1
+
+- name: Ensure marathon directory
+  file:
+    path: "{{item}}"
+    state: directory
+    recurse: yes
+  with_items:
+    - /var/lib/marathon
+
+- name: Write marathon systemd unit file
+  template: src=marathon.service.j2 dest=/etc/systemd/system/marathon.service
+  register: marathon_service
+  notify:
+    - restart marathon
+
+- name: Reload systemd
+  systemd: daemon_reload=yes
+  when: marathon_service.changed
+
+- name: Start marathon services
+  service: name=marathon state=started enabled=yes
+
+# overwrite origin enable service
+- name: Reenable marathon service
+  command: systemctl reenable marathon.service

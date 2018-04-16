@@ -1,0 +1,37 @@
+- name: Add mesos repo apt key
+  apt_key:
+    id: E56151BF
+    keyserver: keyserver.ubuntu.com
+
+- name: Add mesos repo
+  lineinfile: dest=/etc/apt/sources.list state=present line='{{item}}'
+  with_items:
+    - "deb https://mirrors.ustc.edu.cn/debian jessie-backports main"
+    - "deb http://repos.mesosphere.io/debian jessie main"
+  register: mesos_repo
+
+- name: Update packages
+  apt:
+    update_cache: yes
+  when: mesos_repo.changed
+
+- name: Install chronos packages
+  apt: name={{ item }} state=present
+  with_items:
+    - chronos
+  environment:
+    # do not start at the end of install
+    RUNLEVEL: 1
+
+- name: Write chronos systemd unit file
+  template: src=chronos.service.j2 dest=/etc/systemd/system/chronos.service
+  register: chronos_service
+  notify:
+    - restart chronos
+
+- name: Reload systemd
+  systemd: daemon_reload=yes
+  when: chronos_service.changed
+
+- name: Start chronos services
+  service: name=chronos state=started enabled=yes

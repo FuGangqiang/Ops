@@ -1,0 +1,23 @@
+{% import "macro.j2" as tools with context %}
+[Unit]
+Description=Mesos Slave
+After=network.target
+Wants=network.target
+
+[Service]
+ExecStart=/usr/sbin/mesos-slave \
+    --master=zk://{{ tools.zookeeper_clients(2181) }}/mesos \
+    --ip={{ ansible_host }} \
+    --work_dir=/var/lib/mesos/slave \
+    --containerizers=docker,mesos \
+    --executor_registration_timeout=5mins
+
+KillMode=process
+Restart=always
+RestartSec=20
+LimitNOFILE=infinity
+CPUAccounting=true
+MemoryAccounting=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+.vagrant/
+*.retry
+*.tar.gz
+*.pem
+*.csr
+*.pyc

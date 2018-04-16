@@ -1,0 +1,42 @@
+$node_count = 3
+
+
+def append_host_authorized_key(config)
+  config.vm.provision "shell" do |s|
+    ssh_pub_key = File.readlines("#{Dir.home}/.ssh/id_rsa.pub").first.strip
+    s.inline = <<-SHELL
+      mkdir -p /root/.ssh
+      mkdir -p /home/vagrant/.ssh
+      echo #{ssh_pub_key} >> /root/.ssh/authorized_keys
+      echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
+    SHELL
+  end
+end
+
+
+def ansible_provision(config)
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "ansible/vagrant.yaml"
+  end
+end
+
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "debian"
+
+  config.vm.provision :shell, inline: "echo hello"
+
+  config.vm.define "mesos-master" do |master|
+    master.vm.network "private_network", ip: "10.0.0.2"
+    ansible_provision(master)
+    append_host_authorized_key(master)
+  end
+
+  (1..$node_count).each do |i|
+    config.vm.define "mesos-slave#{i}" do |node|
+      node.vm.network "private_network", ip: "10.0.0.#{i+2}"
+      ansible_provision(node)
+      append_host_authorized_key(node)
+    end
+  end
+end

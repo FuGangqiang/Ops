@@ -1,0 +1,13 @@
+{% import "macro.j2" as tools with context %}
+dataDir=/var/lib/zookeeper
+dataLogDir=/var/log/zookeeper
+tickTime=2000
+clientPort=2181
+initLimit=5
+syncLimit=2
+autopurge.purgeInterval=48
+autopurge.snapRetainCount=10
+
+{% for host in groups['zookeeper'] %}
+server.{{ tools.myid(host) }}={{ host }}:2888:3888
+{% endfor %}

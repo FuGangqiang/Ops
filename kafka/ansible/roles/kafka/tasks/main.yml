@@ -1,0 +1,54 @@
+- name: Install jave env
+  apt: name={{ item }} state=present update_cache=yes
+  retries: 3
+  delay: 3
+  with_items:
+    - openjdk-8-jre-headless
+
+- name: Ensure the kafka tarball dir exists at {{kafka_tarball_dir}}
+  file: path={{kafka_tarball_dir}} state=directory
+
+- name: Ensure the kafka dir exists at {{kafka_dir}}
+  file: path={{kafka_dir}} state=directory
+
+- name: check whether the tarball is downloaded already
+  stat: path={{kafka_tarball_dir}}/kafka_{{scala_version}}-{{kafka_version}}.tgz
+  register: kafka_tarball_script
+
+- name: Download kafka
+  get_url: url={{kafka_url}} dest={{kafka_tarball_dir}}/kafka_{{scala_version}}-{{kafka_version}}.tgz timeout=60
+  retries: 3
+  delay: 3
+  register: kafka_tarball_downloaded
+  when: not kafka_tarball_script.stat.exists
+
+- name: Ensure kafka group
+  group: name=kafka system=yes
+
+- name: Ensuer kafka user
+  user: name=kafka group=kafka system=yes
+
+- name: Unarchive kafka tarball
+  unarchive: src={{kafka_tarball_dir}}/kafka_{{scala_version}}-{{kafka_version}}.tgz dest=/opt remote_src=yes owner=kafka group=kafka
+
+- name: Create kafka directory
+  file: path={{item}} state=directory owner=kafka group=kafka
+  with_items:
+    - "{{kafka_data_dir}}"
+
+- name: Configure kafka server.properties
+  template: src=server.properties.j2 dest={{kafka_dir}}/config/server.properties owner=kafka group=kafka
+  notify:
+    - Restart kafka
+
+- name: "Add kafka's bin dir to the PATH"
+  copy: content="export PATH=$PATH:{{kafka_dir}}/bin" dest="/etc/profile.d/kafka_path.sh" mode=755
+
+- name: Kafka systemd script
+  template: src=kafka.service.j2 dest=/etc/systemd/system/kafka.service
+  notify:
+    - Reload systemctl daemon
+    - Restart kafka
+
+- name: Enable kafka service
+  service: name=kafka enabled=yes

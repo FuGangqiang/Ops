@@ -1,0 +1,6 @@
+scala_version: "2.12"
+kafka_version: "1.1.0"
+kafka_tarball_dir: "/root/apps"
+kafka_dir: "/opt/kafka_{{scala_version}}-{{kafka_version}}"
+kafka_url: "http://mirrors.tuna.tsinghua.edu.cn/apache/kafka/{{kafka_version}}/kafka_{{scala_version}}-{{kafka_version}}.tgz"
+kafka_data_dir: "/var/lib/kafka"

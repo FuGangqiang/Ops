@@ -1,0 +1,21 @@
+alias ls='ls --color=auto'
+alias ll='ls -lh --color=auto'
+alias la='ls -A --color=auto'
+
+shopt -s autocd
+shopt -s cdable_vars
+shopt -s checkwinsize
+shopt -s checkhash
+shopt -s globstar
+shopt -s histappend
+shopt -s lithist
+
+export HISTSIZE=10000
+export HISTFILESIZE=$HISTSIZE
+export HISTCONTROL=ignorespace:ignoredups
+export PS1='\u@\h \w\$ '
+export PATH=/opt/bin:$PATH
+
+# use UP and DOWN key for history
+bind '"\e[A": history-search-backward'
+bind '"\e[B": history-search-forward'
